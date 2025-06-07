@@ -22,6 +22,7 @@ var schematic = null;
 
 var starting_pos = new Vec3(0, 0, 0);
 
+
 const bot = mineflayer.createBot({
   host: 'localhost',
   port: 25565,
@@ -59,8 +60,10 @@ bot.on('chat', async (username, message) => {
         switch (head) {
             case ':start':
                 paused = false;
+                
                 schematic = await utils.read_schem(chosen_schematic);
-                to_do, shopping_list = await utils.setup_schematic(schematic)
+                [ schematic, to_do, shopping_list ] = await utils.setup_schematic(schematic)
+                
                 break;
             
             case ':set_schem':
@@ -70,16 +73,8 @@ bot.on('chat', async (username, message) => {
                     break;
                 }
                 schematic = await utils.read_schem(chosen_schematic);
-                console.log("SCHEMATIC")
-                console.log(schematic)
-                schematic, to_do, shopping_list = await utils.setup_schematic(schematic)
+                [ schematic, to_do, shopping_list ] = await utils.setup_schematic(schematic)
                 
-                console.log("TODO")
-                console.log(to_do)
-                console.log("SHOPPING")
-                console.log(shopping_list)
-
-
                 console.log(`Set schematic to: ${chosen_schematic}`);
                 
                 break;
@@ -132,6 +127,7 @@ bot.on('chat', async (username, message) => {
                     utils.wait(100)
                 })
                 bot.emit("complete_build")
+                break;
         }
  
     } catch (error) {
@@ -162,11 +158,23 @@ async function updateLoop() {
         return;
     }
 
-    var a = to_do.pop()    
-    console.log(a)
     // while (!bot.entity.onGround) {
         // await wait(100);
     // }
+
+    var block = to_do.pop()  
+
+    if (block) {
+        var pos = block.position.offset(starting_pos.x, starting_pos.y, starting_pos.z)
+        
+        console.log(block.name, pos)
+
+        // TODO: move bot
+        // TODO: destroy any existing block
+        // TODO: place block
+
+        bot.emit("build_progress")
+    }
 
 
     setTimeout(updateLoop, 100)
@@ -191,4 +199,10 @@ bot.on("build_complete", () => {
     console.log("Build complete!")
     bot.chat("Build complete!")
     paused = true;
+})
+
+bot.on("build_progress", async () => {
+    var total_blocks = await utils.number_of_blocks(schematic, false)
+    var completed = total_blocks - to_do.length
+    console.log(`Progress: ${completed} / ${total_blocks}`)
 })
